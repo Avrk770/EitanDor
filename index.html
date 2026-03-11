@@ -109,10 +109,7 @@
     <main class="document" id="document" aria-live="polite"></main>
 
     <script type="module">
-      import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.min.mjs";
-
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
+      import * as pdfjsLib from "https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.min.mjs";
 
       const pdfUrl = "./Eitan%20Dor.pdf";
       const container = document.getElementById("document");
@@ -162,7 +159,10 @@
       };
 
       try {
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const loadingTask = pdfjsLib.getDocument({
+          url: pdfUrl,
+          disableWorker: true,
+        });
         const pdf = await loadingTask.promise;
 
         setStatus(`טוען ${pdf.numPages} חלקים...`);
