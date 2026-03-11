@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>מסמך לגלילה</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3efe7;
+        --surface: #fffdf8;
+        --text: #1f1a17;
+        --muted: #6d6259;
+        --border: #d8cec3;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(180deg, var(--bg) 0%, #e8e0d4 100%);
+        color: var(--text);
+      }
+
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar {
+        padding: 14px 18px;
+        background: rgba(255, 253, 248, 0.9);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(10px);
+      }
+
+      .topbar h1 {
+        margin: 0 0 4px;
+        font-size: 18px;
+      }
+
+      .topbar p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .viewer {
+        padding: 12px;
+      }
+
+      iframe,
+      object {
+        display: block;
+        width: 100%;
+        height: calc(100vh - 88px);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .fallback {
+        padding: 24px;
+        text-align: center;
+      }
+
+      .fallback a {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <h1>מסמך לגלילה</h1>
+        <p>הקובץ מוצג ישירות בדפדפן כדי שאפשר יהיה לגלול ולשתף אותו כלינק.</p>
+      </header>
+
+      <main class="viewer">
+        <object data="./Eitan%20Dor.pdf" type="application/pdf">
+          <div class="fallback">
+            <p>אם ה־PDF לא נטען בתוך הדפדפן, אפשר לפתוח אותו ישירות:</p>
+            <p><a href="./Eitan%20Dor.pdf">פתיחת המסמך</a></p>
+          </div>
+        </object>
+      </main>
+    </div>
+  </body>
+</html>
