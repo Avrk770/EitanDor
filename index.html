@@ -3,91 +3,209 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>מסמך לגלילה</title>
+    <title>Eitan Dor</title>
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f3efe7;
-        --surface: #fffdf8;
-        --text: #1f1a17;
-        --muted: #6d6259;
-        --border: #d8cec3;
+        --bg: #ebe4d9;
+        --paper: #fffdf9;
+        --ink: #231d19;
+        --muted: #7b6f65;
+        --shadow: 0 18px 45px rgba(58, 42, 26, 0.12);
       }
 
       * {
         box-sizing: border-box;
       }
 
+      html {
+        scroll-behavior: smooth;
+      }
+
       body {
         margin: 0;
+        background:
+          radial-gradient(circle at top, rgba(255, 255, 255, 0.72), transparent 28%),
+          linear-gradient(180deg, #efe7dc 0%, var(--bg) 100%);
+        color: var(--ink);
         font-family: Arial, sans-serif;
-        background: linear-gradient(180deg, var(--bg) 0%, #e8e0d4 100%);
-        color: var(--text);
       }
 
-      .shell {
-        min-height: 100vh;
-        display: grid;
-        grid-template-rows: auto 1fr;
-      }
-
-      .topbar {
-        padding: 14px 18px;
-        background: rgba(255, 253, 248, 0.9);
-        border-bottom: 1px solid var(--border);
+      .status {
+        position: fixed;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(255, 253, 249, 0.92);
+        box-shadow: 0 10px 30px rgba(35, 29, 25, 0.08);
+        font-size: 14px;
+        color: var(--muted);
         backdrop-filter: blur(10px);
       }
 
-      .topbar h1 {
-        margin: 0 0 4px;
-        font-size: 18px;
+      .status[data-state="ready"] {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.4s ease;
       }
 
-      .topbar p {
-        margin: 0;
-        font-size: 14px;
-        color: var(--muted);
+      .document {
+        width: min(100%, 980px);
+        margin: 0 auto;
+        padding: 72px 12px 48px;
       }
 
-      .viewer {
-        padding: 12px;
+      .page {
+        width: 100%;
+        margin: 0 0 14px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--paper);
+        box-shadow: var(--shadow);
       }
 
-      iframe,
-      object {
+      .page canvas {
         display: block;
         width: 100%;
-        height: calc(100vh - 88px);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        background: var(--surface);
+        height: auto;
       }
 
-      .fallback {
+      .placeholder {
+        width: 100%;
+        background:
+          linear-gradient(90deg, rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.5), rgba(0, 0, 0, 0.03)),
+          var(--paper);
+        background-size: 220% 100%;
+        animation: shimmer 1.8s linear infinite;
+      }
+
+      .error {
+        max-width: 720px;
+        margin: 120px auto;
         padding: 24px;
         text-align: center;
+        color: #7f1d1d;
       }
 
-      .fallback a {
+      .error a {
         color: inherit;
+      }
+
+      @keyframes shimmer {
+        from {
+          background-position: 200% 0;
+        }
+
+        to {
+          background-position: -20% 0;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="shell">
-      <header class="topbar">
-        <h1>מסמך לגלילה</h1>
-        <p>הקובץ מוצג ישירות בדפדפן כדי שאפשר יהיה לגלול ולשתף אותו כלינק.</p>
-      </header>
+    <div class="status" id="status" data-state="loading">טוען את המסמך...</div>
+    <main class="document" id="document" aria-live="polite"></main>
 
-      <main class="viewer">
-        <object data="./Eitan%20Dor.pdf" type="application/pdf">
-          <div class="fallback">
-            <p>אם ה־PDF לא נטען בתוך הדפדפן, אפשר לפתוח אותו ישירות:</p>
-            <p><a href="./Eitan%20Dor.pdf">פתיחת המסמך</a></p>
-          </div>
-        </object>
-      </main>
-    </div>
+    <script type="module">
+      import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.min.mjs";
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs";
+
+      const pdfUrl = "./Eitan%20Dor.pdf";
+      const container = document.getElementById("document");
+      const status = document.getElementById("status");
+      const renderedPages = new Set();
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+
+      const setStatus = (text, state = "loading") => {
+        status.textContent = text;
+        status.dataset.state = state;
+      };
+
+      const renderPage = async (pdf, pageNumber, shell) => {
+        if (renderedPages.has(pageNumber)) {
+          return;
+        }
+
+        renderedPages.add(pageNumber);
+        const page = await pdf.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const cssWidth = shell.clientWidth || container.clientWidth || baseViewport.width;
+        const scale = (cssWidth / baseViewport.width) * ratio;
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d", { alpha: false });
+
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.aspectRatio = `${baseViewport.width} / ${baseViewport.height}`;
+
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise;
+
+        shell.replaceChildren(canvas);
+      };
+
+      const showError = (message) => {
+        container.innerHTML = `
+          <section class="error">
+            <p>${message}</p>
+            <p><a href="${pdfUrl}">פתיחת ה-PDF המקורי</a></p>
+          </section>
+        `;
+        setStatus("טעינת המסמך נכשלה", "error");
+      };
+
+      try {
+        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+
+        setStatus(`טוען ${pdf.numPages} חלקים...`);
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) {
+                return;
+              }
+
+              const pageNumber = Number(entry.target.dataset.pageNumber);
+              renderPage(pdf, pageNumber, entry.target).catch(() => {
+                entry.target.textContent = "שגיאה בטעינת החלק הזה";
+              });
+              observer.unobserve(entry.target);
+            });
+          },
+          {
+            rootMargin: "1200px 0px",
+          }
+        );
+
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          const page = await pdf.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1 });
+          const shell = document.createElement("section");
+          const placeholder = document.createElement("div");
+
+          shell.className = "page";
+          shell.dataset.pageNumber = String(pageNumber);
+          placeholder.className = "placeholder";
+          placeholder.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
+          shell.appendChild(placeholder);
+          container.appendChild(shell);
+          observer.observe(shell);
+        }
+
+        setStatus("המסמך מוכן לגלילה", "ready");
+      } catch (error) {
+        console.error(error);
+        showError("לא הצלחתי לטעון את המסמך בתוך האתר.");
+      }
+    </script>
   </body>
 </html>
